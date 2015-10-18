@@ -89,6 +89,7 @@ void draw(int max)
 void drawstat(int n, int min, int max, int avg)
 {
 	move(0, 0);
+	clrtoeol();
 	attron(COLOR_PAIR(7));
 	printw("Records:  %u\t  Minimum:  %d\t  Maximum:  %d\t  Average:  %d", n, min, max, avg);
 	attroff(COLOR_PAIR(7));
@@ -128,7 +129,7 @@ int main(int argc, char **argv)
 	init_pair(7, COLOR_CYAN, COLOR_BLACK); // For status bar
 	char inbuf[80];
 	int cur = 0;
-	int n = 0, min = 0, max = 0, tot = 0, avg = 0;
+	int n = 1, min = 0, max = 0, tot = 0, avg = 0;
 	signal(SIGWINCH, winch_update);
 	signal(SIGINT, terminate);
 	list_alloc();
@@ -136,7 +137,7 @@ int main(int argc, char **argv)
 	{
 		cur = strtol(inbuf, NULL, 10);
 		shift_in(cur);
-		avg = min = max = cur;
+		tot = avg = min = max = cur;
 		draw(max);
 		drawstat(n, min, max, avg);
 		block();
