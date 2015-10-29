@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <limits.h>
 #include <math.h>
 #include <signal.h>
 #include <errno.h>
@@ -47,19 +48,40 @@ void block()
 
 void rect(int y, int x, int w, int h)
 {
-	char blanks[w + 1];
-	for (int i = 0; i < w; i++) blanks[i] = ' ';
-	blanks[w] = 0;
+	char fill[w + 1];
+	for (int i = 0; i < w; i++) fill[i] = ' ';
+	fill[w] = 0;
 	for (int i = y; i < y + h; i++)
 	{
 		move(i, x);
-		printw("%s", blanks);
+		printw("%s", fill);
+	}
+}
+
+void stipple_rect(int y, int x, int w, int h)
+{
+	char fill_even[w + 1], fill_odd[w + 1];
+	for (int i = 0; i < w; i++)
+	{
+		fill_even[i] = i % 2 ? ' ' : '.';
+		fill_odd[i] = i % 2 ? '.' : ' ';
+	}
+	fill_even[w] = fill_odd[w] = 0;
+	for (int i = y; i < y + h; i++)
+	{
+		move(i, x);
+		printw("%s", i % 2 ? fill_even : fill_odd);
 	}
 }
 
 void clearbar(int x)
 {
 	rect(3, x * (BAR_W + 1), BAR_W, LINES - 5);
+}
+
+void drawsep(int x)
+{
+	stipple_rect(3, x * (BAR_W + 1), BAR_W, LINES - 5);
 }
 
 void drawbar(int x, int n, int max)
@@ -72,7 +94,7 @@ void drawbar(int x, int n, int max)
 	attroff(COLOR_PAIR(1));
 	move(LINES - h - 3, x * (BAR_W + 1));
 	attron(COLOR_PAIR(5));
-	if (n >= pow(10, BAR_W) || n <= -1 * pow(10, BAR_W - 1)) printw("  *");
+	if (n >= pow(10, BAR_W) || n <= -1 * pow(10, BAR_W - 1) || n == INT_MIN) printw("  *");
 	else printw("%4d", n);
 	attroff(COLOR_PAIR(5));
 }
@@ -82,7 +104,8 @@ void draw(int max)
 	for (int i = 0; i < listlen; i++)
 	{
 		clearbar(i);
-		drawbar(i, list[i], max ? max : 1);
+		if (list[i] == INT_MAX) drawsep(i);
+		else drawbar(i, list[i], max ? max : 1);
 	}
 }
 
@@ -91,7 +114,7 @@ void drawstat(int n, int min, int max, int avg)
 	move(0, 0);
 	clrtoeol();
 	attron(COLOR_PAIR(7));
-	printw("Records:  %u\t  Minimum:  %d\t  Maximum:  %d\t  Average:  %d", n, min, max, avg);
+	printw("Records:  %u\t  Minimum:  %d\t  Maximum:  %d\t  Average:  %d", n, min == INT_MAX ? 0 : min, max == INT_MIN ? 0 : max, avg);
 	attroff(COLOR_PAIR(7));
 }
 
@@ -128,30 +151,30 @@ int main(int argc, char **argv)
 	init_pair(6, COLOR_WHITE, COLOR_RED); // For alerts
 	init_pair(7, COLOR_CYAN, COLOR_BLACK); // For status bar
 	char inbuf[80];
-	int cur = 0;
-	int n = 1, min = 0, max = 0, tot = 0, avg = 0;
+	int cur = INT_MAX;
+	int n = 0, min = INT_MAX, max = INT_MIN, tot = 0, avg = 0;
 	signal(SIGWINCH, winch_update);
 	signal(SIGINT, terminate);
 	list_alloc();
-	if (fgets(inbuf, 80, stdin) != NULL)
-	{
-		cur = strtol(inbuf, NULL, 10);
-		shift_in(cur);
-		tot = avg = min = max = cur;
-		draw(max);
-		drawstat(n, min, max, avg);
-		block();
-		refresh();
-	}
 	while (fgets(inbuf, 80, stdin) != NULL)
 	{
-		cur = strtol(inbuf, NULL, 10);
+		if (inbuf[strlen(inbuf) - 1] == '\n') inbuf[strlen(inbuf) - 1] = 0;
+		char *end;
+		cur = strtol(inbuf, &end, 10);
+		if (strlen(inbuf) == 0 || strlen(end) != 0)
+		{
+			if (! strcmp(inbuf, "-")) cur = INT_MAX;
+			else cur = INT_MIN;
+		}
+		else
+		{
+			n++;
+			min = MIN(min, cur);
+			max = MAX(max, cur);
+			tot += cur;
+			avg = tot / n;
+		}
 		shift_in(cur);
-		n++;
-		min = MIN(min, cur);
-		max = MAX(max, cur);
-		tot += cur;
-		avg = tot / n;
 		draw(max);
 		drawstat(n, min, max, avg);
 		block();
