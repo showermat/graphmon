@@ -18,3 +18,8 @@ For example, to plot infinite random data:
 
 Negative numbers are counted properly but are graphed as though they were 0.  Lines containing anything but a valid integer are not counted and are displayed as an asterisk with no bar.  A line containing only a single hyphen will create a visual separator in the output.  Numbers that are too wide to fit on top of a bar are replaced by a single asterisk.  Changing the constant BAR_W in the source allows the width of bars to be easily changed.
 
+### Command-Line Flags
+
+  - `-m MAX`: Manually set the maximum value of displayed bars, preventing the program from dynamically determining the scale
+  - `-u`: Use Unicode to draw sub-character-height bars, increasing the vertical resolution by eight times.  Won't work if the font doesn't have glyphs for eighth blocks
+
